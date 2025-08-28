@@ -1,0 +1,54 @@
+---
+title: "DataDepuration"
+output: html_document
+---
+
+### Instalación de paquetes
+
+```{r}
+install.packages("readr")
+library(readr)
+ESS11_subset <- read_csv("ESS11-subset.csv")
+
+```
+
+### Cargar la base de datos y crear nuestro dataframe a utilizar:
+
+Seleccionamos las variables a incluir en el dataset limpio: happy, health, agea, brncntr, gndr, cntry
+
+```{r}
+
+df <- ESS11_subset[,c(6,11,12,13,14,15)]
+df <- as.data.frame(df)
+
+```
+
+### Limpieza:
+
+-   Recodificación de valores no válidos (refusal, don't know, no answer) en `NA's.`
+
+-   Convertir `brncntr` y `gndr` en factores y asignarles etiquetas a los valores.
+
+```{r}
+
+df$happy <- ifelse(df$happy %in% c(77,88,99), NA, df$happy)
+df$health <- ifelse(df$health %in% c(7,8,9), NA, df$health)
+df$health <- ifelse(df$health %in% c(7,8,9), NA, df$health)
+df$agea <- ifelse(df$agea %in% c(999), NA, df$agea)
+df$brncntr <- ifelse(df$brncntr %in% c(7,8,9), NA, df$brncntr)
+df$gndr <- ifelse(df$gndr %in% c(7,8,9), NA, df$gndr)
+colSums(is.na(df))
+
+
+df$brncntr <- factor(df$brncntr, levels = c(1, 2), labels = c("Nacido en el país", "No nacido en el país"))
+df$gndr <- factor(df$gndr, levels = c(1, 2), labels = c("Hombre", "Mujer"))
+
+summary(df)
+```
+
+### Descarga de la base de datos depurada:
+
+```{r}
+write.csv(df, "ESS11-depurado.csv", row.names = FALSE)
+
+```
