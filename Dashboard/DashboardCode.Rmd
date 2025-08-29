@@ -1,0 +1,381 @@
+---
+title: "Dashboard Felicidad y Salud en Europa"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    source_code: embed # Añade un enlace al código fuente si lo deseas
+
+---
+
+
+```{r setup, include=FALSE} 
+
+### SETUP:
+
+# Definir el repositorio CRAN para instalar paquetes 
+options(repos = c(CRAN = "<https://cloud.r-project.org>"))
+
+# Paquetes necesarios
+
+packages <- c("knitr","flexdashboard", "ggplot2", "dplyr", "ggridges", "viridis", "plotly", "readr", "here", "shiny", "sf", "rnaturalearth")
+
+# Instalar automáticamente si faltan
+
+installed <- packages %in% rownames(installed.packages()) 
+  if (any(!installed)) { install.packages(packages[!installed]) }
+
+# Cargar librerías y dataset
+
+lapply(packages, library, character.only = TRUE)
+df <- read.csv(here("Data", "ESS11-depurado.csv"))
+```
+
+Salud x Felicidad
+=======================================================================
+Column {data-width=150}
+-----------------------------------------------------------------------
+
+### Felicidad por país
+
+```{r fig.height=7, fig.width=7, out.height="100%"}
+sf::sf_use_s2(FALSE)
+cntry_counts <- df %>%
+  group_by(cntry) %>%
+  summarise(n_part = n())
+
+# Descargar mapa mundial
+world <- ne_countries(returnclass = "sf") %>%
+  st_make_valid()  # Arregla posibles geometrías inválidas
+
+# 3 Unir datos de participantes
+map_data <- world %>%
+  left_join(cntry_counts, by = c("iso_a2_eh" = "cntry"))
+
+#  Calcular puntos dentro de cada país para etiquetas
+points <- st_point_on_surface(map_data)
+
+# Definir recorte: de Islandia a Israel
+bbox <- st_bbox(c(xmin = -25, xmax = 40, ymin = 28, ymax = 85))
+map_data_crop <- st_crop(map_data, bbox)
+points_crop <- st_crop(points, bbox)
+
+
+df_happy <- df %>%
+  group_by(cntry) %>%
+  summarise(mean_happy = mean(happy, na.rm = TRUE),
+            n = n())
+
+world_happy <- map_data_crop %>%
+  left_join(df_happy, by = c("iso_a2_eh" = "cntry"))
+
+ggplot(world_happy) +
+  geom_sf(aes(fill = mean_happy)) +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +
+  labs(fill = "Felicidad media", title = "Felicidad media por país") +
+  coord_sf(expand = FALSE) + 
+  theme_minimal() + 
+  theme (plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+
+```
+
+### Salud por país
+
+```{r, fig.height=7, fig.width=7, out.height="100%"}
+
+df_health <- df %>%
+  group_by(cntry) %>%
+  summarise(mean_health = mean(health, na.rm = TRUE),
+            n = n())
+world_health <- map_data_crop %>%
+  left_join(df_health, by = c("iso_a2_eh" = "cntry"))
+
+ggplot(world_health) +
+  geom_sf(aes(fill = mean_health)) +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +
+  labs(fill = "Salud media") +
+  coord_sf(expand = FALSE) +
+  theme_minimal() + 
+  theme (plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
+```
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+### Relación salud y felicidad: número de respuestas
+
+```{r, fig.height=8, fig.width=6, out.width="100%", out.height="auto"}
+
+# Tabla de proporciones
+df_bubble <- df %>%
+  count(health, happy) %>%
+  group_by(health) %>%
+  mutate(prop = n / sum(n))
+
+# Bubble heatmap con línea de tendencia
+ggplot(df_bubble, aes(x = as.numeric(health), y = as.numeric(happy))) +
+  geom_point(aes(size = n, color = prop), alpha = 0.7) +
+  geom_smooth(aes(weight = n), method = "loess", color = "red", se = FALSE) +
+  scale_size(range = c(3, 15)) +
+  scale_color_gradient(low = "lightblue", high = "darkblue") +
+  labs(
+    x = "Salud autopercibida",
+    y = "Felicidad autopercibida",
+    size = "N",
+    color = "Prop",
+    title = "Salud vs Felicidad (proporciones)"
+  ) +
+  theme_minimal() +
+  theme(
+   legend.position = "bottom",
+   legend.box = "horizontal",
+   legend.box.just = "center",
+    legend.spacing.x = unit(1, "cm"),
+    legend.text = element_text(size = 6)
+  ) +
+  guides(
+    size = guide_legend(nrow = 2, byrow = TRUE),
+    color = guide_colorbar(barwidth = 5, barheight = 1)
+  )
+```
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+### Relación salud y felicidad: proporciones de respuesta
+
+```{r, fig.height=8, fig.width=6, out.width="100%", out.height="auto"}
+
+# Calcular proporciones por combinación happy x health
+df_heatmap <- df %>%
+  filter(!is.na(happy) & !is.na(health)) %>%
+  count(health, happy) %>%
+  group_by(health) %>%
+  mutate(prop = n / sum(n))
+
+# Calcular tendencia: media de happy por cada nivel de health
+trend <- df %>%
+  filter(!is.na(happy) & !is.na(health)) %>%
+  group_by(health) %>%
+  summarise(mean_happy = mean(happy, na.rm = TRUE))
+
+# Heatmap con tendencia
+ggplot(df_heatmap, aes(x = as.numeric(health), y = as.numeric(happy), fill = prop)) +
+  geom_tile(color = "white", alpha = 0.9) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_text(aes(label = scales::percent(prop, accuracy = 1)), color = "white", size = 3) +
+  geom_line(
+    data = trend,
+    aes(x = as.numeric(health), y = mean_happy),
+    color = "red", size = 1,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = trend,
+    aes(x = as.numeric(health), y = mean_happy),
+    color = "red", size = 2,
+    inherit.aes = FALSE
+  ) +
+  labs(
+    x = "Salud autopercibida",
+    y = "Felicidad autopercibida",
+    fill = "Proporción",
+    title = "Mapa de calor: Salud vs Felicidad"
+  ) +
+  scale_x_continuous(breaks = unique(as.numeric(df$health))) +
+  scale_y_continuous(breaks = unique(as.numeric(df$happy))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+
+
+Felicidad en función de otros factores sociodemográficos
+=======================================================================
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+### Felicidad por rangos de edad
+
+```{r, fig.height=6, fig.width=8, out.width="auto", out.height="100%"}
+# Filtrar NA en happy y crear rangos de edad
+df_ridges <- df %>%
+  filter(!is.na(happy) & !is.na(agea)) %>%
+  mutate(age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE))
+
+# Calcular media de felicidad por grupo de edad para la línea de tendencia
+trend1 <- df_ridges %>%
+  group_by(age_group) %>%
+  summarise(mean_happy = mean(happy),
+            mid_age = mean(as.numeric(age_group)))  # posición central para la línea
+
+# Ridge plot con línea de tendencia
+ggplot(df_ridges, aes(x = happy, y = age_group, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+  geom_point(
+    data = trend1,
+    aes(x = mean_happy, y = age_group, color = "Felicidad media"), size = 2) +
+  geom_smooth(
+    data = trend1,
+    aes(x = mean_happy, y = as.numeric(age_group), color = "Felicidad media"),
+    method = "loess",
+    se = FALSE,
+    linewidth = 1) +
+  scale_fill_viridis_c(option = "plasma", guide = guide_colorbar(direction = "horizontal"), alpha = 0.9) +
+  scale_x_continuous(breaks = 0:10, limits = c(0, 11)) +
+  scale_color_manual(values = c("Felicidad media" = "red")) +   
+  labs(
+    x = "Felicidad",
+    y = "Rango de edad",
+    fill = "Felicidad",
+    color = "") +
+  theme_minimal() +
+  ggtitle("Distribución de felicidad por rangos de edad") +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    legend.text = element_text(size = 8),
+    legend.position = "bottom",     # 📍 leyenda a la derecha
+    legend.box = "horizontal"        # apila leyendas verticalmente
+  )
+
+
+```
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+
+### género x felicidad
+
+```{r, fig.height=6, fig.width=8, out.width="100%", out.height="auto"}
+df_prop3 <- df %>%
+  filter(!is.na(happy)& !is.na(gndr)) %>%
+  group_by(gndr, happy) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(df_prop3, aes(x = factor(gndr), y = prop, fill = factor(happy))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma") +
+  scale_x_discrete(labels = c("1" = "Hombre", "2" = "Mujer")) + 
+  labs(x = "Género", y = "Proporción", fill = "Nivel de felicidad percibida",
+       title = "Distribución de felicidad por género") +
+  theme_minimal()
+
+```
+
+### Felicidad x país de nacimiento
+
+```{r, fig.height=6, fig.width=8, out.width="100%", out.height="auto"}
+df_prop1 <- df %>%
+  filter(!is.na(happy)& !is.na(brncntr)) %>%
+  group_by(brncntr, happy) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n))
+
+
+ggplot(df_prop1, aes(x = factor(brncntr), y = prop, fill = factor(happy))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma", alpha = 0.9) + 
+  labs(x = "Origen", y = "Proporción", fill = "Nivel de felicidad percibida",
+       title = "Distribución de felicidad por origen") +
+  theme_minimal()
+
+```
+
+
+Salud percibida en función de otros factores sociodemográficos
+=======================================================================
+Column {data-width=200}
+-----------------------------------------------------------------------
+
+### Salud x edad
+```{r, fig.height=6, fig.width=8, out.width="auto", out.height="100%"}
+
+# Filtrar NA en health y crear rangos de edad
+df_ridges2 <- df %>%
+  filter(!is.na(health) & !is.na(agea)) %>%
+  mutate(age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE))
+
+# Calcular media de health por grupo de edad para la línea de tendencia
+trend2 <- df_ridges2 %>%
+  group_by(age_group) %>%
+  summarise(mean_health = mean(health),
+            mid_age = mean(as.numeric(age_group)))  # posición central para la línea
+
+
+ggplot(df_ridges2, aes(x = health, y = age_group, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.00001) +
+  geom_point(
+    data = trend2,
+    aes(x = mean_health, y = age_group, color = "Salud media"), size = 2) +
+  geom_smooth(
+    data = trend2,
+    aes(x = mean_health, y = as.numeric(age_group), color = "Salud media"),
+    method = "loess",
+    se = FALSE,
+    linewidth = 1) +
+  scale_fill_viridis_c(option = "plasma", guide = guide_colorbar(direction = "horizontal")) +
+  scale_x_continuous(breaks = 0:5, limits = c(0, 5.5)) +
+  scale_color_manual(values = c("Salud media" = "red")) +   
+  labs(
+    x = "Salud",
+    y = "Rango de edad",
+    fill = "Salud",
+    color = "") +
+  theme_minimal() +
+  ggtitle("Distribución de salud por rangos de edad") +
+  theme(
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    legend.text = element_text(size = 8),
+    legend.position = "bottom",     # 📍 leyenda a la derecha
+    legend.box = "horizontal"        # apila leyendas verticalmente
+  )
+```
+
+
+Column {data-width=200}
+-----------------------------------------------------------------------
+### Genero x salud
+
+```{r, fig.height=6, fig.width=8, out.width="100%", out.height="auto"}
+
+df_prop4 <- df %>%
+  filter(!is.na(gndr)& !is.na(health)) %>%
+  group_by(gndr, health) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(df_prop4, aes(x = factor(gndr), y = prop, fill = factor(health))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma") +
+  scale_x_discrete(labels = c("1" = "Hombre", "2" = "Mujer")) + 
+  labs(x = "Género", y = "Proporción", fill = "Nivel de salud percibida",
+       title = "Distribución de salud por género") +
+  theme_minimal()
+```
+
+
+### Salud x país nacimiento
+```{r, fig.height=6, fig.width=8, out.width="100%", out.height="auto"}
+df_prop2 <- df %>%
+  filter(!is.na(brncntr)& !is.na(health)) %>%
+  group_by(brncntr, health) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n / sum(n))
+
+ggplot(df_prop2, aes(x = factor(brncntr), y = prop, fill = factor(health))) +
+  geom_bar(stat = "identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_viridis_d(option = "plasma") +
+  labs(x = "Origen", y = "Proporción", fill = "Nivel de salud percibida",
+       title = "Distribución de salud por origen") +
+  theme_minimal()
+```
