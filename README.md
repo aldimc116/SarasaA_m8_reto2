@@ -54,7 +54,7 @@ El objetivo principal es analizar la relación entre **salud** y **felicidad aut
 1.  Clonar el repositorio:
 
     ``` bash
-    git clone https://github.com/usuario/proyecto-salud-felicidad.git
+    git clone https://github.com/aldimc116/SarasaA_m8_reto2.git
     ```
 
 2.  Abrir RStudio.\
