@@ -1,0 +1,247 @@
+---
+title: "Informe técnico: Salud y Felicidad percibida en Europa"
+author: "Alba Sarasa Gracia"
+date: "01/09/2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+### SETUP:
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Definir el repositorio CRAN para instalar paquetes 
+options(repos = c(CRAN = "<https://cloud.r-project.org>"))
+
+# Paquetes necesarios
+
+packages <- c("knitr","flexdashboard", "ggplot2", "dplyr", "ggridges", "viridis", "plotly", "readr", "here", "shiny", "sf", "rnaturalearth","ggridges","patchwork")
+
+# Instalar automáticamente si faltan
+
+installed <- packages %in% rownames(installed.packages()) 
+  if (any(!installed)) { install.packages(packages[!installed]) }
+
+# Cargar librerías y dataset
+
+lapply(packages, library, character.only = TRUE)
+df <- read.csv(here("Data", "ESS11-depurado.csv"))
+```
+
+# 1. Introducción
+
+Este informe forma parte del proyecto de Ciencia de Datos reproducible del Máster en Behavioral Data Science por el Instituto de Formación Continua IL3 de la Universidad de Barcelona.\
+El objetivo principal es **analizar algunos de los factores sociodemográficos y contextuales que influyen en la felicidad y la salud autopercibidas en Europa**, con el fin de identificar patrones y relaciones relevantes.
+
+Los objetivos específicos del proyecto son:
+
+-   **Observar diferencias internacionales:** Comparar la distribución geográfica de la salud y la felicidad autopercibida.
+
+-   **Explorar relaciones entre variables:** Explorar la relación entre salud y felicidad autopercibida.
+
+-   **Analizar la dimensión etaria:** Examinar cómo se relaciona la edad con los niveles de felicidad y de salud reportados.
+
+-   **Estudiar la dimensión de género:** Identificar si existen diferencias de género en los niveles de felicidad percibida y de salud.
+
+-   **Considerar la condición migratoria:** Determinar si la población nacida fuera del país reporta distintos niveles de felicidad y de salud respecto a la población nativa.
+
+# 2. Datos y metodología
+
+Los análisis se basan en los datos de la encuesta [European Social Survey](https://ess.sikt.no/en/) “ESS11 edition 3.0”, descargados el 20/08/2025.
+
+Se han seleccionado las variables de felicidad (`happy`), salud (`health`), edad (`agea`), género (`gndr`), y lugar de nacimiento (`brncntr`).\
+Los análisis combinan **tablas resumen, pruebas estadísticas y gráficos descriptivos**.
+
+# 3. Resultados principales
+
+## 3.1. Relación entre salud autopercibida y felicidad
+
+```{r echo=FALSE}
+# Calcular proporciones por combinación happy x health
+df_heatmap <- df %>%
+  filter(!is.na(happy) & !is.na(health)) %>%
+  count(health, happy) %>%
+  group_by(health) %>%
+  mutate(prop = n / sum(n))
+
+# Calcular tendencia: media de happy por cada nivel de health
+trend <- df %>%
+  filter(!is.na(happy) & !is.na(health)) %>%
+  group_by(health) %>%
+  summarise(mean_happy = mean(happy, na.rm = TRUE))
+
+# Heatmap con tendencia
+ggplot(df_heatmap, aes(x = as.numeric(health), y = as.numeric(happy), fill = prop)) +
+  geom_tile(color = "white", alpha = 0.9) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_text(aes(label = scales::percent(prop, accuracy = 1)), color = "white", size = 3) +
+  geom_line(
+    data = trend,
+    aes(x = as.numeric(health), y = mean_happy),
+    color = "red", size = 1,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = trend,
+    aes(x = as.numeric(health), y = mean_happy),
+    color = "red", size = 2,
+    inherit.aes = FALSE
+  ) +
+  labs(
+    x = "Salud autopercibida",
+    y = "Felicidad autopercibida",
+    fill = "Proporción",
+    title = "Figura 1. Mapa de calor: Salud vs Felicidad"
+  ) +
+  scale_x_continuous(breaks = unique(as.numeric(df$health))) +
+  scale_y_continuous(breaks = unique(as.numeric(df$happy))) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+Se observan diferencias notables entre países en los niveles de felicidad autopercibida: podemos ver una cierta tendencia a tener una felicidad media más alta en los países que muestran valores de salud bajos. Esto sugiere una relación inversa enter ambas variables.
+
+```{r}
+# Spearman correlation con test
+spearman_happy_health <- cor.test(df$happy, df$health, method = "spearman", use = "pairwise.complete.obs")
+resultado_tabla <- data.frame(
+  p_value = spearman_happy_health$p.value,
+  rho = spearman_happy_health$estimate
+)
+
+knitr::kable(resultado_tabla, digits = 3,
+             caption = "Tabla 1. Test de correlación de Spearman entre health y happy")
+```
+
+Como se puede observar en la Tabla 1, el test de correlación de Spearman confirma la relación monótona inversa entre ambas variables.
+
+## 3.2. Interacción con factores sociodemográficos: 
+
+Se exploran más a fondo estas variables mediante el análisis conjunto con factores sociodemográficos como la edad, el género y la situación de inmigación.
+
+```{r echo=FALSE, fig.width=10, out.width="100%"}
+
+# --- HAPPY ---
+df_ridges <- df %>%
+  filter(!is.na(happy) & !is.na(agea)) %>%
+  mutate(age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE))
+
+trend1 <- df_ridges %>%
+  group_by(age_group) %>%
+  summarise(mean_happy = mean(happy),
+            mid_age = mean(as.numeric(age_group)))
+
+p1 <- ggplot(df_ridges, aes(x = happy, y = age_group, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+  geom_point(data = trend1, aes(x = mean_happy, y = age_group, color = "Felicidad media"), size = 2) +
+  geom_smooth(data = trend1, aes(x = mean_happy, y = as.numeric(age_group), color = "Felicidad media"),
+              method = "loess", se = FALSE, linewidth = 1) +
+  scale_fill_viridis_c(option = "plasma", guide = guide_colorbar(direction = "horizontal"), alpha = 0.9) +
+  scale_x_continuous(breaks = 0:10, limits = c(0, 11)) +
+  scale_color_manual(values = c("Felicidad media" = "red")) +
+  labs(x = "Felicidad", y = "Rango de edad", fill = "Felicidad", color = "") +
+  ggtitle("Distribución de felicidad por rangos de edad") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12),  # 🔹 tamaño más pequeño
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    legend.text = element_text(size = 8),
+    legend.position = "bottom",
+    legend.box = "horizontal"
+  )
+
+# --- HEALTH ---
+df_ridges2 <- df %>%
+  filter(!is.na(health) & !is.na(agea)) %>%
+  mutate(age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE))
+
+trend2 <- df_ridges2 %>%
+  group_by(age_group) %>%
+  summarise(mean_health = mean(health),
+            mid_age = mean(as.numeric(age_group)))
+
+p2 <- ggplot(df_ridges2, aes(x = health, y = age_group, fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 2, rel_min_height = 0.00001) +
+  geom_point(data = trend2, aes(x = mean_health, y = age_group, color = "Salud media"), size = 2) +
+  geom_smooth(data = trend2, aes(x = mean_health, y = as.numeric(age_group), color = "Salud media"),
+              method = "loess", se = FALSE, linewidth = 1) +
+  scale_fill_viridis_c(option = "plasma", guide = guide_colorbar(direction = "horizontal")) +
+  scale_x_continuous(breaks = 0:5, limits = c(0, 5.5)) +
+  scale_color_manual(values = c("Salud media" = "red")) +
+  labs(x = "Salud", y = "Rango de edad", fill = "Salud", color = "") +
+  ggtitle("Distribución de salud por rangos de edad") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 12),  # 🔹 tamaño más pequeño
+    axis.text.y = element_text(size = 10),
+    axis.title.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10),
+    axis.title.x = element_text(size = 12),
+    legend.text = element_text(size = 8),
+    legend.position = "bottom",
+    legend.box = "horizontal"
+  )
+
+# --- JUNTARLOS LADO A LADO ---
+p1 + p2 +
+  plot_annotation(title = "Figura 2. Distribución de felicidad y salud por rangos de edad")
+
+```
+
+Respecto a la edad, el gráfico (Figura 1) muestra una tendencia a puntuar más bajo en felicidad pero más alto en salud percibida cuanto mayor es el rango de edad, lo que sigue el patrón inverso entre ambas variables que se ha descrito anteriormente.
+
+En las tablas siguientes (Tabla 2 y Tabla 3) se observa que, aunque existen ligeras diferencias en los niveles altos de felicidad y salud entre hombres y mujeres, la distribución general es bastante similar entre ambos géneros.
+
+```{r echo=FALSE}
+# Tabla de felicidad por género (%)
+tabla_feliz_genero <- prop.table(table(df$happy, df$gndr), margin = 2) * 100
+tabla_feliz_genero <- round(tabla_feliz_genero, 2)
+
+# Tabla de salud por género (%)
+tabla_salud_genero <- prop.table(table(df$health, df$gndr), margin = 2) * 100
+tabla_salud_genero <- round(tabla_salud_genero, 2)
+
+# Mostrar tablas
+kable(tabla_feliz_genero, caption = "Tabla 2. Distribución porcentual de felicidad por género")  
+kable(tabla_salud_genero, caption = "Tabla 3. Distribución porcentual de salud por género")
+```
+
+Finalmente, se muestra a continuación (Tabla 4 y Tabla 5) que la población no nacida en el país tiende a reportar niveles más altos de felicidad, mientras que la población nativa puntúa más alto en salud percibida. Esto refuerza la hipótesis de una relación inversa entre salud y felicidad percibidas.
+
+```{r echo=FALSE}
+## Diferencias de género en felicidad y salud
+
+# Tabla de felicidad por condición migratoria (%)
+tabla_feliz_migracion <- prop.table(table(df$happy, df$brncntr), margin = 2) * 100
+tabla_feliz_migracion <- round(tabla_feliz_migracion, 2)
+
+# Tabla de salud por condición migratoria (%)
+tabla_salud_migracion <- prop.table(table(df$health, df$brncntr), margin = 2) * 100
+tabla_salud_migracion <- round(tabla_salud_migracion, 2)
+
+kable(tabla_feliz_migracion, caption = "Tabla 4. Distribución porcentual de felicidad por condición migratoria")
+kable(tabla_salud_migracion, caption = "Tabla 5. Distribución porcentual de salud por condición migratoria")
+
+```
+
+# 4. Conclusiones
+
+**Relación entre salud y felicidad:**
+
+Se ha detectado una tendencia monótona negativa: a menor salud media percibida, mayor
+
+felicidad media reportada. La mayoría de las respuestas se concentran en los valores de salud medio-bajos y de felicidad medio-altos.
+
+**Relación entre edad y felicidad/salud:**
+
+La felicidad tiende a disminuir ligeramente con la edad, mientras que la salud percibida aumenta, reforzando la relación inversa entre ambas variables.
+
+**Diferencias de género en felicidad y salud:**
+
+Las diferencias entre hombres y mujeres son sutiles; las mujeres puntúan ligeramente más alto en niveles altos de felicidad y salud, pero las distribuciones generales son similares.
+
+**Condición migratoria y niveles de felicidad/salud:**
+
+Las personas no nacidas en el país muestran mayor proporción en niveles altos de felicidad, mientras que las personas nacidas en el país puntúan más alto en salud. Esto confirma la relación inversa observada entre felicidad y salud percibida.
