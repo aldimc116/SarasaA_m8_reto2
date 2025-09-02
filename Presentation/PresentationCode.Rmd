@@ -40,7 +40,7 @@ p_hh <- spearman_happy_health$p.value
 
 Este informe forma parte del proyecto de Ciencia de Datos reproducible del Máster en Behavioral Data Science (IL3 - UB).
 
-### Objetivo principal: 
+### Objetivo principal:
 
 #### Analizar algunos de los factores sociodemográficos y contextuales que influyen en la felicidad y la salud autopercibidas en Europa, con el fin de identificar patrones y relaciones relevantes.
 
@@ -88,16 +88,16 @@ df_heatmap <- df %>%
 trend <- df %>%
   filter(!is.na(happy) & !is.na(health)) %>%
   group_by(health) %>%
-  summarise(mean_happy = mean(as.numeric(happy), na.rm = TRUE)) # Usar as.numeric
+  summarise(mean_happy = mean(as.numeric(happy), na.rm = TRUE))
 
 # Heatmap con tendencia
-ggplot(df_heatmap, aes(x = health, y = happy, fill = prop)) + # Usar factores directamente
+ggplot(df_heatmap, aes(x = health, y = happy, fill = prop)) + 
   geom_tile(color = "white", alpha = 0.9) +
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
   geom_text(aes(label = scales::percent(prop, accuracy = 1)), color = "white", size = 3) +
   geom_line(
     data = trend,
-    aes(x = health, y = mean_happy, group = 1), # group = 1 para la línea de tendencia sobre factores
+    aes(x = health, y = mean_happy, group = 1), 
     color = "red", size = 1,
     inherit.aes = FALSE
   ) +
@@ -148,13 +148,13 @@ df_ridges <- df %>%
   filter(!is.na(happy) & !is.na(agea)) %>%
   mutate(
     age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE, right = FALSE),
-    happy_numeric = as.numeric(happy) # Usar la versión numérica para el eje x del ridge
+    happy_numeric = as.numeric(happy)
   )
 
 trend1 <- df_ridges %>%
   group_by(age_group) %>%
   summarise(mean_happy = mean(happy_numeric),
-            mid_age_pos = as.numeric(factor(age_group))) # Posición para el suavizado
+            mid_age_pos = as.numeric(factor(age_group))) 
 
 p1 <- ggplot(df_ridges, aes(x = happy_numeric, y = age_group, fill = stat(x))) +
   geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
@@ -170,20 +170,21 @@ p1 <- ggplot(df_ridges, aes(x = happy_numeric, y = age_group, fill = stat(x))) +
   theme_minimal() +
   theme(plot.title = element_text(size = 12, hjust = 0.5),
         legend.position = "bottom", legend.box = "horizontal",
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
 
 # --- HEALTH ---
 df_ridges2 <- df %>%
   filter(!is.na(health) & !is.na(agea)) %>%
   mutate(
     age_group = cut(agea, breaks = seq(15, 90, by = 5), include.lowest = TRUE, right = FALSE),
-    health_numeric = as.numeric(health) # Usar la versión numérica para el eje x del ridge
+    health_numeric = as.numeric(health) 
   )
 
 trend2 <- df_ridges2 %>%
   group_by(age_group) %>%
   summarise(mean_health = mean(health_numeric),
-            mid_age_pos = as.numeric(factor(age_group))) # Posición para el suavizado
+            mid_age_pos = as.numeric(factor(age_group)))
 
 p2 <- ggplot(df_ridges2, aes(x = health_numeric, y = age_group, fill = stat(x))) +
   geom_density_ridges_gradient(scale = 2, rel_min_height = 0.01) +
@@ -199,12 +200,13 @@ p2 <- ggplot(df_ridges2, aes(x = health_numeric, y = age_group, fill = stat(x)))
   theme_minimal() +
   theme(plot.title = element_text(size = 12, hjust = 0.5),
         legend.position = "bottom", legend.box = "horizontal",
-        legend.text = element_text(size = 8))
+        legend.text = element_text(size = 8),
+        plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"))
 
 # --- JUNTARLOS LADO A LADO ---
 p1 + p2 +
   plot_annotation(title = "Distribución de felicidad y salud por rangos de edad") &
-  theme(plot.title = element_text(size = 14, hjust = 0.5)) # Título global para patchwork
+  theme(plot.title = element_text(size = 14, hjust = 0.5)) 
 ```
 
 Se observa una tendencia a puntuar más bajo en felicidad pero más alto en salud percibida cuanto mayor es el rango de edad, lo que sigue el patrón inverso entre ambas variables.
@@ -214,6 +216,7 @@ Se observa una tendencia a puntuar más bajo en felicidad pero más alto en salu
 #### Género
 
 ```{r gender-plots, fig.height=6, fig.width=12, out.width="100%"}
+
 # Plot 1: Salud por género
 df_prop4 <- df %>%
   filter(!is.na(gndr) & !is.na(health)) %>%
@@ -222,7 +225,7 @@ df_prop4 <- df %>%
   group_by(gndr) %>%
   mutate(prop = n / sum(n))
 
-p_gender_health <- ggplot(df_prop4, aes(x = gndr, y = prop, fill = factor(health))) + # Usar gndr y health directamente como factores
+p_gender_health <- ggplot(df_prop4, aes(x = gndr, y = prop, fill = factor(health))) + 
   geom_bar(stat = "identity", position = "fill", color = "white") +
   scale_y_continuous(labels = scales::percent_format()) +
   scale_fill_viridis_d(option = "plasma", name = "Nivel de salud percibida") +
@@ -230,7 +233,7 @@ p_gender_health <- ggplot(df_prop4, aes(x = gndr, y = prop, fill = factor(health
        title = "Distribución de salud por género") +
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 12), # Ajustar tamaño del título para el plot combinado
+    plot.title = element_text(hjust = 0.5, size = 12),
     legend.position = "bottom",
     legend.title = element_text(size = 8),
     legend.text = element_text(size = 7),
@@ -256,7 +259,7 @@ p_gender_happy <- ggplot(df_prop3, aes(x = gndr, y = prop, fill = factor(happy))
        title = "Distribución de felicidad por género") +
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, size = 12), # Ajustar tamaño del título para el plot combinado
+    plot.title = element_text(hjust = 0.5, size = 12),
     legend.position = "bottom",
     legend.title = element_text(size = 8),
     legend.text = element_text(size = 7),
@@ -266,7 +269,7 @@ p_gender_happy <- ggplot(df_prop3, aes(x = gndr, y = prop, fill = factor(happy))
     axis.title.y = element_text(size = 10)
   )
 
-# Combinar los plots con un título global
+# Combinar
 p_gender_health + p_gender_happy +
   plot_annotation(title = "Distribución de felicidad y salud por género") &
   theme(plot.title = element_text(hjust = 0.5, size = 14))
@@ -287,7 +290,7 @@ summarise(n = n(), .groups = 'drop') %>%
 group_by(brncntr) %>%
 mutate(prop = n / sum(n))
 
-p_birth_happy <- ggplot(df_prop1, aes(x = brncntr, y = prop, fill = factor(happy))) + # Usar brncntr y happy directamente
+p_birth_happy <- ggplot(df_prop1, aes(x = brncntr, y = prop, fill = factor(happy))) + 
 geom_bar(stat = "identity", position = "fill", color = "white") +
 scale_y_continuous(labels = scales::percent_format()) +
 scale_fill_viridis_d(option = "plasma", alpha = 0.9, name = "Nivel de felicidad percibida") +
@@ -313,7 +316,7 @@ summarise(n = n(), .groups = 'drop') %>%
 group_by(brncntr) %>%
 mutate(prop = n / sum(n))
 
-p_birth_health <- ggplot(df_prop2, aes(x = brncntr, y = prop, fill = factor(health))) + # Usar brncntr y health directamente
+p_birth_health <- ggplot(df_prop2, aes(x = brncntr, y = prop, fill = factor(health))) +
 geom_bar(stat = "identity", position = "fill", color = "white") +
 scale_y_continuous(labels = scales::percent_format()) +
 scale_fill_viridis_d(option = "plasma", name = "Nivel de salud percibida") +
@@ -331,10 +334,10 @@ axis.text.y = element_text(size = 8),
 axis.title.y = element_text(size = 10)
 )
 
-# Combinar los plots con un título global
+# Combinar
 p_birth_happy + p_birth_health +
 plot_annotation(title = "Distribución de felicidad y salud por condición migratoria") &
-theme(plot.title = element_text(hjust = 0.5, size = 14)) # Título global para el conjunto
+theme(plot.title = element_text(hjust = 0.5, size = 14))
 ```
 
 La población no nacida en el país tiende a reportar niveles más altos de felicidad, mientras que la población nativa puntúa más alto en salud percibida.

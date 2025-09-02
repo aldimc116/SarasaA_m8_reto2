@@ -12,7 +12,7 @@ ESS11_subset <- read_csv("ESS11-subset.csv")
 
 ```
 
-### Cargar la base de datos y crear nuestro dataframe a utilizar:
+### Cargar la base de datos y crear el dataframe a utilizar:
 
 Seleccionamos las variables a incluir en el dataset limpio: happy, health, agea, brncntr, gndr, cntry
 

@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
-    source_code: embed # Añade un enlace al código fuente si lo deseas
+    source_code: embed 
 
 ---
 
@@ -17,7 +17,6 @@ output:
 options(repos = c(CRAN = "<https://cloud.r-project.org>"))
 
 # Paquetes necesarios
-
 packages <- c("knitr","flexdashboard", "ggplot2", "dplyr", "ggridges", "viridis", "plotly", "readr", "here", "shiny", "sf", "rnaturalearth")
 
 # Instalar automáticamente si faltan
@@ -46,9 +45,9 @@ cntry_counts <- df %>%
 
 # Descargar mapa mundial
 world <- ne_countries(returnclass = "sf") %>%
-  st_make_valid()  # Arregla posibles geometrías inválidas
+  st_make_valid() 
 
-# 3 Unir datos de participantes
+# Unir datos de participantes
 map_data <- world %>%
   left_join(cntry_counts, by = c("iso_a2_eh" = "cntry"))
 
@@ -206,7 +205,7 @@ df_ridges <- df %>%
 trend1 <- df_ridges %>%
   group_by(age_group) %>%
   summarise(mean_happy = mean(happy),
-            mid_age = mean(as.numeric(age_group)))  # posición central para la línea
+            mid_age = mean(as.numeric(age_group)))
 
 # Ridge plot con línea de tendencia
 ggplot(df_ridges, aes(x = happy, y = age_group, fill = stat(x))) +
@@ -236,8 +235,8 @@ ggplot(df_ridges, aes(x = happy, y = age_group, fill = stat(x))) +
     axis.text.x = element_text(size = 10),
     axis.title.x = element_text(size = 12),
     legend.text = element_text(size = 8),
-    legend.position = "bottom",     # 📍 leyenda a la derecha
-    legend.box = "horizontal"        # apila leyendas verticalmente
+    legend.position = "bottom",     
+    legend.box = "horizontal"        
   )
 
 
@@ -304,7 +303,7 @@ df_ridges2 <- df %>%
 trend2 <- df_ridges2 %>%
   group_by(age_group) %>%
   summarise(mean_health = mean(health),
-            mid_age = mean(as.numeric(age_group)))  # posición central para la línea
+            mid_age = mean(as.numeric(age_group)))
 
 
 ggplot(df_ridges2, aes(x = health, y = age_group, fill = stat(x))) +
@@ -334,8 +333,8 @@ ggplot(df_ridges2, aes(x = health, y = age_group, fill = stat(x))) +
     axis.text.x = element_text(size = 10),
     axis.title.x = element_text(size = 12),
     legend.text = element_text(size = 8),
-    legend.position = "bottom",     # 📍 leyenda a la derecha
-    legend.box = "horizontal"        # apila leyendas verticalmente
+    legend.position = "bottom",   
+    legend.box = "horizontal"      
   )
 ```
 

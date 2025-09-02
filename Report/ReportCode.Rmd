@@ -141,7 +141,7 @@ p1 <- ggplot(df_ridges, aes(x = happy, y = age_group, fill = stat(x))) +
   labs(x = "Felicidad", y = "Rango de edad", fill = "Felicidad", color = "") +
   ggtitle("Distribución de felicidad por rangos de edad") +
   theme_minimal() +
-  theme(plot.title = element_text(size = 12),  # 🔹 tamaño más pequeño
+  theme(plot.title = element_text(size = 12), 
     axis.text.y = element_text(size = 10),
     axis.title.y = element_text(size = 12),
     axis.text.x = element_text(size = 10),
@@ -172,7 +172,7 @@ p2 <- ggplot(df_ridges2, aes(x = health, y = age_group, fill = stat(x))) +
   labs(x = "Salud", y = "Rango de edad", fill = "Salud", color = "") +
   ggtitle("Distribución de salud por rangos de edad") +
   theme_minimal() +
-  theme(plot.title = element_text(size = 12),  # 🔹 tamaño más pequeño
+  theme(plot.title = element_text(size = 12), 
     axis.text.y = element_text(size = 10),
     axis.title.y = element_text(size = 12),
     axis.text.x = element_text(size = 10),
@@ -201,7 +201,6 @@ tabla_feliz_genero <- round(tabla_feliz_genero, 2)
 tabla_salud_genero <- prop.table(table(df$health, df$gndr), margin = 2) * 100
 tabla_salud_genero <- round(tabla_salud_genero, 2)
 
-# Mostrar tablas
 kable(tabla_feliz_genero, caption = "Tabla 2. Distribución porcentual de felicidad por género")  
 kable(tabla_salud_genero, caption = "Tabla 3. Distribución porcentual de salud por género")
 ```
