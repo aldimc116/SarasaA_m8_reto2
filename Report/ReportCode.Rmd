@@ -31,11 +31,11 @@ df <- read.csv(here("Data", "ESS11-depurado.csv"))
 # 1. Introducción
 
 Este informe forma parte del proyecto de Ciencia de Datos reproducible del Máster en Behavioral Data Science por el Instituto de Formación Continua IL3 de la Universidad de Barcelona.\
-El objetivo principal es **analizar algunos de los factores sociodemográficos y contextuales que influyen en la felicidad y la salud autopercibidas en Europa**, con el fin de identificar patrones y relaciones relevantes.
+Su principal objetivo es **analizar algunos de los factores sociodemográficos y contextuales que influyen en la felicidad y la salud autopercibidas en Europa**, con el fin de identificar patrones y relaciones relevantes.
 
 Los objetivos específicos del proyecto son:
 
--   **Observar diferencias internacionales:** Comparar la distribución geográfica de la salud y la felicidad autopercibida.
+-   **Observar diferencias internacionales:** Comparar la distribución geográfica de la salud y la felicidad autopercibida en Europa.
 
 -   **Explorar relaciones entre variables:** Explorar la relación entre salud y felicidad autopercibida.
 
@@ -100,7 +100,7 @@ ggplot(df_heatmap, aes(x = as.numeric(health), y = as.numeric(happy), fill = pro
 
 ```
 
-Se observan diferencias notables entre países en los niveles de felicidad autopercibida: podemos ver una cierta tendencia a tener una felicidad media más alta en los países que muestran valores de salud bajos. Esto sugiere una relación inversa enter ambas variables.
+Se observa una cierta tendencia a tener una felicidad media más alta en los países que muestran valores de salud bajos. Esto sugiere una relación inversa entre ambas variables, que se confirma mediante el test de correlación de Spearman: `happy` y `health` tienen una relación monótona, inversa y estadísticamente significativa entre ellas (Tabla 1).
 
 ```{r}
 # Spearman correlation con test
@@ -114,11 +114,9 @@ knitr::kable(resultado_tabla, digits = 3,
              caption = "Tabla 1. Test de correlación de Spearman entre health y happy")
 ```
 
-Como se puede observar en la Tabla 1, el test de correlación de Spearman confirma la relación monótona inversa entre ambas variables.
+En base a estos hallazgos, se exploran más a fondo estas variables mediante el análisis conjunto con factores sociodemográficos como la edad, el género y la situación de inmigación.
 
-## 3.2. Interacción con factores sociodemográficos: 
-
-Se exploran más a fondo estas variables mediante el análisis conjunto con factores sociodemográficos como la edad, el género y la situación de inmigación.
+## 3.2. Interacción con factores sociodemográficos:
 
 ```{r echo=FALSE, fig.width=10, out.width="100%"}
 
@@ -208,7 +206,7 @@ kable(tabla_feliz_genero, caption = "Tabla 2. Distribución porcentual de felici
 kable(tabla_salud_genero, caption = "Tabla 3. Distribución porcentual de salud por género")
 ```
 
-Finalmente, se muestra a continuación (Tabla 4 y Tabla 5) que la población no nacida en el país tiende a reportar niveles más altos de felicidad, mientras que la población nativa puntúa más alto en salud percibida. Esto refuerza la hipótesis de una relación inversa entre salud y felicidad percibidas.
+Finalmente, se muestra en la Tabla 4 y Tabla 5 que la población no nacida en el país tiende a reportar niveles más altos de felicidad, mientras que la población nativa puntúa más alto en salud percibida. Esto refuerza la hipótesis de una relación inversa entre salud y felicidad percibidas.
 
 ```{r echo=FALSE}
 ## Diferencias de género en felicidad y salud
@@ -230,18 +228,16 @@ kable(tabla_salud_migracion, caption = "Tabla 5. Distribución porcentual de sal
 
 **Relación entre salud y felicidad:**
 
-Se ha detectado una tendencia monótona negativa: a menor salud media percibida, mayor
-
-felicidad media reportada. La mayoría de las respuestas se concentran en los valores de salud medio-bajos y de felicidad medio-altos.
+-   Se ha detectado una tendencia monótona negativa: a menor salud media percibida, mayor felicidad media reportada. La mayoría de las respuestas se concentran en los valores de salud medio-bajos y de felicidad medio-altos.
 
 **Relación entre edad y felicidad/salud:**
 
-La felicidad tiende a disminuir ligeramente con la edad, mientras que la salud percibida aumenta, reforzando la relación inversa entre ambas variables.
+-   La felicidad tiende a disminuir ligeramente con la edad, mientras que la salud percibida aumenta, reforzando la relación inversa entre ambas variables.
 
 **Diferencias de género en felicidad y salud:**
 
-Las diferencias entre hombres y mujeres son sutiles; las mujeres puntúan ligeramente más alto en niveles altos de felicidad y salud, pero las distribuciones generales son similares.
+-   Las diferencias entre hombres y mujeres son sutiles; las mujeres puntúan ligeramente más alto en niveles altos de felicidad y salud, pero las distribuciones generales son similares.
 
 **Condición migratoria y niveles de felicidad/salud:**
 
-Las personas no nacidas en el país muestran mayor proporción en niveles altos de felicidad, mientras que las personas nacidas en el país puntúan más alto en salud. Esto confirma la relación inversa observada entre felicidad y salud percibida.
+-   Las personas no nacidas en el país muestran mayor proporción en niveles altos de felicidad, mientras que las personas nacidas en el país puntúan más alto en salud. Esto confirma la relación inversa observada entre felicidad y salud percibida, también controlando por este factor.
